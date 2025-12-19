@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パズルパネル</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --step-1: #2563eb;
+            --step-2: #ca8a04;
+            --step-3: #16a34a;
+            --step-4: #57534e;
+            --step-5: #dc2626;
+            --bg: #fafafa;
+            --text: #171717;
+            --text-muted: #737373;
+            --border: #e5e5e5;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text);
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            background: white;
+        }
+
+        .tabs-container {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .tab {
+            padding: 16px 24px;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-muted);
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 24px;
+            right: 24px;
+            height: 2px;
+            background: transparent;
+            transition: background 0.2s;
+        }
+
+        .tab.active {
+            color: var(--text);
+        }
+
+        .tab.active::after {
+            background: var(--current-color, var(--text));
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 32px;
+        }
+
+        .puzzle-wrapper {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .puzzle-container {
+            position: relative;
+            display: none;
+        }
+
+        .puzzle-container.active {
+            display: block;
+        }
+
+        .puzzle-image {
+            display: block;
+            max-width: 80vw;
+            max-height: calc(100vh - 200px);
+            border-radius: 8px;
+        }
+
+        .panels-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--current-color, #2563eb);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .panel-number {
+            color: white;
+            font-size: clamp(10px, 2vw, 16px);
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        .panel:hover {
+            opacity: 0.85;
+        }
+
+        .panel.revealed {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .click-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .click-area {
+            cursor: pointer;
+        }
+
+        .counter {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .counter strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .tabs-container {
+                padding: 0 16px;
+                overflow-x: auto;
+            }
+
+            .tab {
+                padding: 14px 16px;
+                font-size: 13px;
+                white-space: nowrap;
+            }
+
+            .tab::after {
+                left: 16px;
+                right: 16px;
+            }
+
+            .main-container {
+                padding: 16px;
+            }
+
+            .puzzle-wrapper {
+                padding: 8px;
+            }
+
+            .puzzle-image {
+                max-width: 95vw;
+                max-height: calc(100vh - 180px);
+            }
+
+            .counter {
+                bottom: 16px;
+                right: 16px;
+                padding: 10px 16px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="tabs-container">
+            <button class="tab active" data-step="1">STEP 1</button>
+            <button class="tab" data-step="2">STEP 2</button>
+            <button class="tab" data-step="3">STEP 3</button>
+            <button class="tab" data-step="4">STEP 4</button>
+            <button class="tab" data-step="5">STEP 5</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="puzzle-wrapper">
+            <div class="puzzle-container active" data-step="1">
+                <img src="Step1.png" alt="Step 1" class="puzzle-image">
+                <div class="panels-grid" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);"></div>
+                <div class="click-overlay" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);"></div>
+            </div>
+
+            <div class="puzzle-container" data-step="2">
+                <img src="Step2.png" alt="Step 2" class="puzzle-image">
+                <div class="panels-grid" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);"></div>
+                <div class="click-overlay" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);"></div>
+            </div>
+
+            <div class="puzzle-container" data-step="3">
+                <img src="Step3.png" alt="Step 3" class="puzzle-image">
+                <div class="panels-grid" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);"></div>
+                <div class="click-overlay" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);"></div>
+            </div>
+
+            <div class="puzzle-container" data-step="4">
+                <img src="Step4.png" alt="Step 4" class="puzzle-image">
+                <div class="panels-grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);"></div>
+                <div class="click-overlay" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);"></div>
+            </div>
+
+            <div class="puzzle-container" data-step="5">
+                <img src="Step5.png" alt="Step 5" class="puzzle-image">
+                <div class="panels-grid" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);"></div>
+                <div class="click-overlay" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="counter">
+        解放: <strong id="revealedCount">0</strong> / <strong id="totalCount">0</strong>
+    </div>
+
+    <script>
+        const stepColors = {
+            1: '#2563eb',
+            2: '#ca8a04',
+            3: '#16a34a',
+            4: '#57534e',
+            5: '#dc2626'
+        };
+
+        // グリッド設定
+        // cols, rows: パネルの列数・行数
+        // top, left, width, height: パネル領域の位置とサイズ（%単位）
+        // 画像に合わせて微調整可能
+        const gridConfigs = {
+            1: { 
+                cols: 4, 
+                rows: 4,
+                top: 14.2,
+                left: 26.9,
+                width: 46.1,
+                height: 65.1
+            },
+            2: { 
+                cols: 5, 
+                rows: 5,
+                top: 15.6,
+                left: 27.7,
+                width: 44.5,
+                height: 62.9
+            },
+            3: { 
+                cols: 5, 
+                rows: 5,
+                top: 14.3,
+                left: 27.0,
+                width: 45.8,
+                height: 65.5
+            },
+            4: { 
+                cols: 2, 
+                rows: 2,
+                top: 26.8,
+                left: 17.1,
+                width: 65.8,
+                height: 46.3
+            },
+            5: { 
+                cols: 5, 
+                rows: 5,
+                top: 20.6,
+                left: 23.4,
+                width: 53.2,
+                height: 52.9
+            }
+        };
+
+
+        let panelStates = {};
+        let currentStep = 1;
+
+        function initPanelStates() {
+            for (let step = 1; step <= 5; step++) {
+                const config = gridConfigs[step];
+                const total = config.cols * config.rows;
+                panelStates[step] = new Array(total).fill(false);
+            }
+        }
+
+        function applyPanelPosition(step) {
+            const config = gridConfigs[step];
+            const container = document.querySelector(`.puzzle-container[data-step="${step}"]`);
+            const image = container.querySelector('.puzzle-image');
+            const panelsGrid = container.querySelector('.panels-grid');
+            const clickOverlay = container.querySelector('.click-overlay');
+            
+            if (!image || !panelsGrid || !clickOverlay) return;
+            
+            // 画像の実際の表示サイズを取得
+            const imageRect = image.getBoundingClientRect();
+            
+            // 画像の自然なサイズを取得（アスペクト比を考慮）
+            const naturalWidth = image.naturalWidth;
+            const naturalHeight = image.naturalHeight;
+            
+            // 画像の実際の表示サイズ
+            const displayWidth = imageRect.width;
+            const displayHeight = imageRect.height;
+            
+            // 画像の自然なアスペクト比と表示アスペクト比を比較
+            const naturalAspectRatio = naturalWidth / naturalHeight;
+            const displayAspectRatio = displayWidth / displayHeight;
+            
+            // アスペクト比の違いを考慮した補正係数を計算
+            // 画像が縦横比を保って表示されている場合、補正は不要
+            // ただし、画像の実際のサイズに基づいてより正確な位置を計算
+            const aspectCorrection = naturalAspectRatio / displayAspectRatio;
+            
+            // 位置とサイズを適用（より正確に設定）
+            panelsGrid.style.top = `${config.top}%`;
+            panelsGrid.style.left = `${config.left}%`;
+            panelsGrid.style.width = `${config.width}%`;
+            // アスペクト比を考慮して高さを調整（画像の実際のサイズに基づく）
+            const correctedHeight = config.height * aspectCorrection;
+            panelsGrid.style.height = `${correctedHeight}%`;
+            
+            clickOverlay.style.top = `${config.top}%`;
+            clickOverlay.style.left = `${config.left}%`;
+            clickOverlay.style.width = `${config.width}%`;
+            clickOverlay.style.height = `${correctedHeight}%`;
+        }
+
+        function createPanels() {
+            for (let step = 1; step <= 5; step++) {
+                const config = gridConfigs[step];
+                const container = document.querySelector(`.puzzle-container[data-step="${step}"]`);
+                const panelsGrid = container.querySelector('.panels-grid');
+                const clickOverlay = container.querySelector('.click-overlay');
+                const total = config.cols * config.rows;
+
+                // 位置とサイズを適用（より正確に設定）
+                panelsGrid.style.top = `${config.top}%`;
+                panelsGrid.style.left = `${config.left}%`;
+                panelsGrid.style.width = `${config.width}%`;
+                panelsGrid.style.height = `${config.height}%`;
+                
+                clickOverlay.style.top = `${config.top}%`;
+                clickOverlay.style.left = `${config.left}%`;
+                clickOverlay.style.width = `${config.width}%`;
+                clickOverlay.style.height = `${config.height}%`;
+
+                for (let i = 0; i < total; i++) {
+                    const panel = document.createElement('div');
+                    panel.className = 'panel';
+                    panel.dataset.index = i;
+                    panel.style.background = stepColors[step];
+                    
+                    // パネルに数字を表示
+                    const panelNumber = document.createElement('div');
+                    panelNumber.className = 'panel-number';
+                    const number = step * 100 + i;
+                    panelNumber.textContent = number;
+                    panel.appendChild(panelNumber);
+                    
+                    panelsGrid.appendChild(panel);
+
+                    const clickArea = document.createElement('div');
+                    clickArea.className = 'click-area';
+                    clickArea.dataset.index = i;
+                    clickArea.dataset.step = step;
+                    clickArea.addEventListener('click', handlePanelClick);
+                    clickOverlay.appendChild(clickArea);
+                }
+            }
+            
+            // 画像の読み込み完了後に位置を再計算
+            for (let step = 1; step <= 5; step++) {
+                const container = document.querySelector(`.puzzle-container[data-step="${step}"]`);
+                const image = container.querySelector('.puzzle-image');
+                if (image) {
+                    if (image.complete) {
+                        applyPanelPosition(step);
+                    } else {
+                        image.addEventListener('load', () => {
+                            applyPanelPosition(step);
+                        });
+                    }
+                }
+            }
+        }
+
+        function handlePanelClick(e) {
+            const step = parseInt(e.currentTarget.dataset.step);
+            const index = parseInt(e.currentTarget.dataset.index);
+            const container = document.querySelector(`.puzzle-container[data-step="${step}"]`);
+            const panel = container.querySelectorAll('.panel')[index];
+
+            panelStates[step][index] = !panelStates[step][index];
+
+            if (panelStates[step][index]) {
+                panel.classList.add('revealed');
+            } else {
+                panel.classList.remove('revealed');
+            }
+
+            updateCounter();
+        }
+
+        function updateCounter() {
+            let totalRevealed = 0;
+            let totalPanels = 0;
+
+            for (let step = 1; step <= 5; step++) {
+                totalRevealed += panelStates[step].filter(state => state).length;
+                totalPanels += panelStates[step].length;
+            }
+
+            document.getElementById('revealedCount').textContent = totalRevealed;
+            document.getElementById('totalCount').textContent = totalPanels;
+        }
+
+        function setCurrentColor(step) {
+            document.documentElement.style.setProperty('--current-color', stepColors[step]);
+        }
+
+        function handleTabClick(e) {
+            const step = parseInt(e.currentTarget.dataset.step);
+            currentStep = step;
+
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+
+            document.querySelectorAll('.puzzle-container').forEach(container => container.classList.remove('active'));
+            document.querySelector(`.puzzle-container[data-step="${step}"]`).classList.add('active');
+
+            setCurrentColor(step);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initPanelStates();
+            createPanels();
+            updateCounter();
+            setCurrentColor(1);
+
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', handleTabClick);
+            });
+        });
+    </script>
+</body>
+</html>
